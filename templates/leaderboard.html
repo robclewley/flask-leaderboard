@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block body %}
+  <ul class=users>
+  {% for user in users %}
+    <li>{{ user.username }} - {{ user.score|safe }}
+  {% else %}
+    <li><em>No players.</em>
+  {% endfor %}
+  </ul>
+  <ul class=entries>
+  {% for entry in entries %}
+    <li><img height="100" src='/static/img/{{ entry.proof }}'></li>
+  {% endfor %}
+  </ul>
+{% endblock %}

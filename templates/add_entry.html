@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block body %}
+  {% if session.user_id %}
+    <form action="{{ url_for('add_entry') }}" method="post" class="add-entry" enctype="multipart/form-data">
+      <dl>
+        <dt>Player:
+			<select name="receiver">
+				{% for user in users %}
+					<option value="{{ user.user_id }}">{{ user.username }}</option>
+				{% endfor %}
+			</select>
+		</dt>
+		<dt>Task:
+			<select name="task">
+				{% for task in tasks %}
+					<option value="{{ task.task_id }}">{{ task.title }}</option>
+				{% endfor %}
+			</select>
+		</dt>
+        <dt>Proof: <input type="file" name="file"></dt>
+		<dt><input type="submit" value="Add Entry"></dt>
+      </dl>
+    </form>
+  {% endif %}
+{% endblock %}
