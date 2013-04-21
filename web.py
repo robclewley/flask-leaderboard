@@ -52,7 +52,13 @@ def get_user_id(username):
 	rv = query_db('select user_id from user where username = ?',
 					[username], one=True)
 	return rv[0] if rv else None
-	
+
+###### TEMPLATE FILTERS ########
+
+@app.template_filter('format_datetime')
+def format_datetime(timestamp):
+	return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d @ %H:%M')
+
 @app.template_filter('get_user_name')
 def get_user_name(id):
 	rv = query_db('select username from user where user_id = ?',
@@ -79,8 +85,9 @@ def get_approval_status(approval):
 					[approval], one=True)
 		return True, get_user_name(rv[0])
 
-def format_datetime(timestamp):
-	return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d @ %H:%M')
+@app.template_filter('profile_link')
+def profile_link(username):
+	return '<a href="/profile/' + str(get_user_id(username)) + '">' + username + '</a>'
 
 @app.before_request
 def before_request():
@@ -97,33 +104,41 @@ def leaderboard():
 	users = query_db('select * from user order by user.score desc ')
 	tasks = query_db('select * from task')
 	return render_template('leaderboard.html', entries=entries, users=users, tasks=tasks)
-	
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-	if g.user:
-		return redirect(url_for('leaderboard'))
-	error = None
-	if request.method == 'POST':
-		if not request.form['username']:
- 			error = 'You have to enter a username'
-		elif not request.form['email'] or \
-			'@' not in request.form['email']:
-			error = 'You have to enter a valid email address'
-		elif not request.form['password']:
-			error = 'You have to enter a password'
-		elif request.form['password'] != request.form['password2']:
-			error = 'The two passwords do not match'
-		elif get_user_id(request.form['username']) is not None:
- 			error = 'The username is already taken'
+
+@app.route('/profile/<id>')
+def profile(id):
+	name = get_user_name(id)
+	entries = query_db('SELECT * FROM entry where receiver = ?',
+							[id])
+	score = query_db('SELECT score from user where user_id = ?',
+							[id])[0][0]
+	return render_template('profile.html', entries=entries, score=score, name=name)
+
+@app.route('/entry/<id>/approve', methods=['GET'])
+def add_approval(id):
+	if 'user_id' not in session:
+		abort(401)
+	if request.method == 'GET':
+		db = get_db()
+		lv = query_db('select approval from entry where entry_id = ?',
+						[id], one=True)
+		if lv[0] != None:
+			flash('that entry has already been approved...')
+			return redirect(url_for('leaderboard'))
 		else:
-			db = get_db()
-			db.execute('insert into user (username, email, pw_hash, score) values (?, ?, ?, ?)',
-				[request.form['username'], request.form['email'],
-				generate_password_hash(request.form['password']), 0])
+			db.execute('insert into approval (entry, sender) values (?, ?)',
+						(id, session['user_id']))
+			rv = query_db('select approval_id from approval where entry = ?',
+						[id], one=True)
+			db.execute('UPDATE entry SET approval=? WHERE entry_id = ?',
+						(rv[0], id))
+			dv = query_db('select task.value from task, entry where task_id = entry.task',
+						one=True)
+			db.execute('UPDATE user SET score=score+? WHERE user_id = ?',
+						(dv[0], id))
 			db.commit()
-			flash('You were successfully registered and can login now')
-			return redirect(url_for('login'))
-	return render_template('register.html', error=error)
+			flash('you approved this entry...')
+			return redirect(url_for('leaderboard'))
 
 @app.route('/entry/add', methods=['GET', 'POST'])
 def add_entry():
@@ -150,21 +165,34 @@ def add_entry():
 		flash('your entry was added...')
 	return render_template('add_entry.html', users=users, tasks=tasks)
 
-@app.route('/entry/<id>/approve', methods=['GET'])
-def add_approval(id):
-	if 'user_id' not in session:
-		abort(401)
-	if request.method == 'GET':
-		db = get_db()
-		db.execute('insert into approval (entry, sender) values (?, ?)',
-						(id, session['user_id']))
-		rv = query_db('select approval_id from approval where entry = ?',
-						[id], one=True)
-		db.execute('UPDATE entry SET approval=? WHERE entry_id = ?',
-					(rv[0], id))
-		db.commit()
-		flash('you approved this entry...')
+##### SESSION METHODS #####
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+	if g.user:
 		return redirect(url_for('leaderboard'))
+	error = None
+	if request.method == 'POST':
+		if not request.form['username']:
+ 			error = 'You have to enter a username'
+		elif not request.form['email'] or \
+			'@' not in request.form['email']:
+			error = 'You have to enter a valid email address'
+		elif not request.form['password']:
+			error = 'You have to enter a password'
+		elif request.form['password'] != request.form['password2']:
+			error = 'The two passwords do not match'
+		elif get_user_id(request.form['username']) is not None:
+ 			error = 'The username is already taken'
+		else:
+			db = get_db()
+			db.execute('insert into user (username, email, pw_hash, score) values (?, ?, ?, ?)',
+				[request.form['username'], request.form['email'],
+				generate_password_hash(request.form['password']), 0])
+			db.commit()
+			flash('You were successfully registered and can login now')
+			return redirect(url_for('login'))
+	return render_template('register.html', error=error)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

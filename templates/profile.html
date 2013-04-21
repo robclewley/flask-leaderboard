@@ -1,24 +1,18 @@
 {% extends "layout.html" %}
 {% block body %}
-  <ul class=users>
-  {% for user in users %}
-    <li>{{ user.username }} - {{ user.score|safe }}
-  {% else %}
-    <li><em>No players.</em>
-  {% endfor %}
-  </ul>
+  {{ name }} - {{ score }} pts.
   <ul class=entries>
   {% for entry in entries %}
-    <li>submitted by {{ entry.sender|get_user_name|profile_link|safe }} for
+    <li>submitted by {{ entry.sender|get_user_name }} for
 		{% if entry.receiver == entry.sender %}
 		  himself
 		{% else %}
-		  {{ entry.receiver|get_user_name|profile_link|safe }}
+		  {{ entry.receiver|get_user_name }}
 		{% endif %}
 		on {{ entry.datetime|format_datetime }}
 	</li>
     <li>{{ entry.task|get_task_title }}</li>
-	<li><img height=100 src=static/img/{{ entry.proof }}></li
+	<li><img height=100 src=static/img/{{ entry.proof }}></li>
 	{% if entry.approval %}
 	  <li>{{ entry.approval|get_approval_status }}</li>
 	{% else %}
