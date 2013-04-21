@@ -9,7 +9,16 @@
   </ul>
   <ul class=entries>
   {% for entry in entries %}
-    <li><img height="100" src='/static/img/{{ entry.proof }}'></li>
+    <li>{{ entry.sender|get_user_name }}</li>
+    <li>{{ entry.receiver|get_user_name }}</li>
+    <li>{{ entry.task|get_task_title }}</li>
+    <li>{{ entry.datetime }}</li>
+	<li>{{ entry.proof }}</li
+	{% if entry.approval %}
+	  <li>{{ entry.approval|get_approval_status }}</li>
+	{% else %}
+	  <li><a href=/entry/{{ entry.entry_id }}/approve>Approve</a></li>
+	{% endif %}
   {% endfor %}
   </ul>
 {% endblock %}

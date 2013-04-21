@@ -36,12 +36,12 @@ def close_database(exception):
 	if hasattr(top, 'sqlite_db'):
 		top.sqlite_db.close()
 
-def init_db():
-	with app.app_context():
-		db = get_db()
-		with app.open_resource('schema.sql') as f:
-			db.cursor().executescript(f.read())
-		db.commit()
+#def init_db():
+#	with app.app_context():
+#		db = get_db()
+#		with app.open_resource('schema.sql') as f:
+#			db.cursor().executescript(f.read())
+#		db.commit()
 
 def query_db(query, args=(), one=False):
 	cur = get_db().execute(query, args)
@@ -53,15 +53,31 @@ def get_user_id(username):
 					[username], one=True)
 	return rv[0] if rv else None
 	
+@app.template_filter('get_user_name')
 def get_user_name(id):
-	rv = query_db('select username from user where id = ?',
+	rv = query_db('select username from user where user_id = ?',
 					[id], one=True)
 	return rv[0] if rv else None
-	
+
 def get_task_id(title):
 	rv = query_db('select task_id from task where title = ?',
 					[title], one=True)
 	return rv[0] if rv else None
+
+@app.template_filter('get_task_title')
+def get_task_title(id):
+	rv = query_db('select title from task where task_id = ?',
+					[id], one=True)
+	return rv[0] if rv else None
+	
+@app.template_filter('get_approval_status')
+def get_approval_status(approval):
+	if approval == None:
+		return '<a href="/entry/?/approve">RED</a>'
+	else:
+		rv = query_db('select sender from approval where approval_id = ?',
+					[approval], one=True)
+		return True, get_user_name(rv[0])
 
 def format_datetime(timestamp):
 	return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d @ %H:%M')
@@ -77,7 +93,7 @@ def before_request():
 def leaderboard():
 	if not g.user:
 		return redirect(url_for('login'))
-	entries = query_db('select * from entry order by entry.datetime desc')
+	entries = query_db('SELECT * FROM entry')
 	users = query_db('select * from user order by user.score desc ')
 	tasks = query_db('select * from task')
 	return render_template('leaderboard.html', entries=entries, users=users, tasks=tasks)
@@ -109,7 +125,7 @@ def register():
 			return redirect(url_for('login'))
 	return render_template('register.html', error=error)
 
-@app.route('/add_entry', methods=['GET', 'POST'])
+@app.route('/entry/add', methods=['GET', 'POST'])
 def add_entry():
 	if 'user_id' not in session:
 		abort(401)
@@ -133,6 +149,22 @@ def add_entry():
 			return redirect(url_for('leaderboard'))
 		flash('your entry was added...')
 	return render_template('add_entry.html', users=users, tasks=tasks)
+
+@app.route('/entry/<id>/approve', methods=['GET'])
+def add_approval(id):
+	if 'user_id' not in session:
+		abort(401)
+	if request.method == 'GET':
+		db = get_db()
+		db.execute('insert into approval (entry, sender) values (?, ?)',
+						(id, session['user_id']))
+		rv = query_db('select approval_id from approval where entry = ?',
+						[id], one=True)
+		db.execute('UPDATE entry SET approval=? WHERE entry_id = ?',
+					(rv[0], id))
+		db.commit()
+		flash('you approved this entry...')
+		return redirect(url_for('leaderboard'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -158,5 +190,5 @@ def logout():
 	return redirect(url_for('leaderboard'))
 	
 if __name__ == '__main__':
-	init_db()
+	#init_db()
 	app.run(debug=True)
