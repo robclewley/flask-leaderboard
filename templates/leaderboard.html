@@ -1,29 +1,33 @@
 {% extends "layout.html" %}
 {% block body %}
-  <ul class=users>
   {% for user in users %}
-    <li>{{ user.username }} - {{ user.score|safe }}
+    <li>{{ user.name }} - {{ user.score }}</li>
   {% else %}
-    <li><em>No players.</em>
+    <em>No players.</em>
   {% endfor %}
   </ul>
-  <ul class=entries>
+  <div data-role="collapsible-set" data-content-theme="d">
   {% for entry in entries %}
-    <li>submitted by {{ entry.sender|get_user_name|profile_link|safe }} for
-		{% if entry.receiver == entry.sender %}
+    <div data-role="collapsible" data-collapsed="true">
+    <h3>
+     {{ entry.task|get_task_title }}
+	</h3>
+    <p>
+	  submitted by <a href="{{ url_for('profile', id=entry.sender) }}">{{ entry.sender|get_user_name }}</a> for
+		{% if entry.sender == entry.receiver %}
 		  himself
 		{% else %}
-		  {{ entry.receiver|get_user_name|profile_link|safe }}
+		  {{ entry.receiver|get_user_name }}
 		{% endif %}
-		on {{ entry.datetime|format_datetime }}
-	</li>
-    <li>{{ entry.task|get_task_title }}</li>
-	<li><img height=100 src=static/img/{{ entry.proof }}></li
-	{% if entry.approval %}
-	  <li>{{ entry.approval|get_approval_status }}</li>
-	{% else %}
-	  <li><a href=/entry/{{ entry.entry_id }}/approve>Approve</a></li>
-	{% endif %}
+		on {{ entry.pub_date }}
+	  {% if entry.proof %}
+	    <p><img height=100 src="{{ url_for('static', filename=entry.proof) }}"></p>
+	  {% else %}
+	    <p><a href="{{ url_for('add_proof', id=entry.id) }}">Add Proof</a></p>
+	  {% endif %}
+	    <p><a href="{{ url_for('upvote', id=entry.id) }}">Upvote</a> / <a href="{{ url_for('downvote', id=entry.id) }}">Downvote</a></p>
+    </p>
+    </div>
   {% endfor %}
-  </ul>
+  </div>
 {% endblock %}
