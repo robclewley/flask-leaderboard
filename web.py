@@ -32,6 +32,9 @@ class User(db.Model):
 		self.name = name
 		self.email = email
 		self.pw_hash = pw_hash
+		
+	def __getitem__(self, item):
+		return (self.id, self.name, self.email, self.pw_hash)[item]
 
 class Task(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
@@ -144,7 +147,8 @@ def leaderboard():
 	if not g.user:
 		return redirect(url_for('login'))
 	entries = Entry.query.all()
-	users = User.query.all()
+	x = User.query.all()
+	users = sorted(x, key=lambda x: get_score(x.id), reverse=True)
 	tasks = Task.query.all()
 	return render_template('leaderboard.html', entries=entries, users=users, tasks=tasks)
 
@@ -152,7 +156,7 @@ def leaderboard():
 def profile(id):
 	name = get_user_name(id)
 	entries = Entry.query.filter(Entry.receiver == id)
-	return render_template('profile.html', entries=entries, name=name)
+	return render_template('profile.html', entries=entries, name=name, id=id)
 
 @app.route('/entry/<id>/upload', methods=['GET', 'POST'])
 def add_attachment(id):
@@ -211,6 +215,12 @@ def add_entry():
 	users = User.query.all()
 	tasks = Task.query.all()
 	if request.method == 'POST':
+		if not request.form['receiver']:
+			flash('you must specify a player')
+			return redirect(url_for('add_entry'))
+		if not request.form['task']:
+			flash('you must specify a task')
+			return redirect(url_for('add_entry'))
 		entry = Entry(session['user_id'], request.form['receiver'], request.form['task'])
 		db.session.add(entry)
 		db.session.commit()

@@ -1,32 +1,39 @@
 {% extends "layout.html" %}
 {% block body %}
-  {% for user in users %}
-    <li>{{ user.name }} - {{ user.id|get_score }}</li>
-  {% else %}
-    <em>No players.</em>
-  {% endfor %}
-  </ul>
-  <div data-role="collapsible-set" data-content-theme="d">
-  {% for entry in entries %}
-    <div data-role="collapsible" data-collapsed="true">
-    <h3>
-     {{ entry.task|get_task_title }} by {{ entry.receiver|get_user_name }}
-	</h3>
-    <p>
-	  submitted by <a href="{{ url_for('profile', id=entry.sender) }}">{{ entry.sender|get_user_name }}</a> for
-		{% if entry.sender == entry.receiver %}
-		  himself
+<div data-role="collapsible-set">
+	<div data-role="collapsible" data-collapsed="false" data-content-theme="c">
+		<h3>Leaderboard</h3>
+		<ol data-role="listview">
+		{% for user in users %}
+			<li><a href="{{ url_for('profile', id=user.id) }}">{{ user.name }} - {{ user.id|get_score }}</a></li>
 		{% else %}
-		  {{ entry.receiver|get_user_name }}
-		{% endif %}
-		on {{ entry.pub_date|format_datetime }}
-	  {% for attachment in entry.attachments %}
-	    <p><img height=100 src="{{ url_for('static', filename=attachment.url) }}"></p>
-	  {% endfor %}
-	    <p><a href="{{ url_for('add_attachment', id=entry.id) }}">Add Attachment</a></p>
-        <p><a href="{{ url_for('upvote', id=entry.id) }}">Upvote</a> / <a href="{{ url_for('downvote', id=entry.id) }}">Downvote</a></p>
-   </p>
-    </div>
-  {% endfor %}
-  </div>
+			<li><a href="#">No players.</a></li>
+		{% endfor %}
+		</ol>
+	</div>
+	<div data-role="collapsible" data-content-theme="c">
+		<h3>Entries</h3>
+		<div data-role="collapsible-set" data-content-theme="d">
+		{% for entry in entries %}
+			<div data-role="collapsible" data-collapsed="true">
+			<h3>{{ entry.task|get_task_title }} by {{ entry.receiver|get_user_name }}</h3>
+				<p>
+					submitted by <a href="{{ url_for('profile', id=entry.sender) }}">
+					{{ entry.sender|get_user_name }}</a> for
+						{% if entry.sender == entry.receiver %}
+							himself
+						{% else %}
+							<a href="{{ url_for('profile', id=entry.receiver) }}"> {{ entry.receiver|get_user_name }}</a>
+						{% endif %}
+		  			on {{ entry.pub_date|format_datetime }}
+					{% for attachment in entry.attachments %}
+						<p><img height=100 src="{{ url_for('static', filename=attachment.url) }}"></p>
+					{% endfor %}
+						<p><a href="{{ url_for('add_attachment', id=entry.id) }}">Add Attachment</a></p>
+						<p><a href="{{ url_for('upvote', id=entry.id) }}">Upvote</a> / <a href="{{ url_for('downvote', id=entry.id) }}">Downvote</a></p>
+			</div>
+			{% endfor %}
+		</div>
+	</div>
+</div>
 {% endblock %}
