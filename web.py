@@ -27,13 +27,11 @@ class User(db.Model):
 	name = db.Column(db.String, unique=True)
 	email = db.Column(db.String, unique=True)
 	pw_hash = db.Column(db.String)
-	score = db.Column(db.Integer)
 
 	def __init__(self, name, email, pw_hash):
 		self.name = name
 		self.email = email
 		self.pw_hash = pw_hash
-		self.score = 0
 
 class Task(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
@@ -48,19 +46,19 @@ class Task(db.Model):
 	
 class Entry(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
-	proof = db.Column(db.String)
 	pub_date = db.Column(db.DateTime)
-	
+
 	sender = db.Column(db.Integer, db.ForeignKey('user.id'))
 	receiver = db.Column(db.Integer, db.ForeignKey('user.id'))
 	task = db.Column(db.Integer, db.ForeignKey('task.id'))
 	
-	def __init__(self, sender, receiver, task, proof=None):
-		self.pub_date = datetime.utcnow()
+	attachments = db.relationship('Attachment', backref='entry', lazy='dynamic')
+	
+	def __init__(self, sender, receiver, task):
+		self.pub_date = datetime.now()
 		self.sender = sender
 		self.receiver = receiver
 		self.task = task
-		self.proof = proof
 
 class Upvote(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
@@ -79,6 +77,17 @@ class Downvote(db.Model):
 	def __init__(self, user, entry):
 		self.user = user
 		self.entry = entry
+		
+class Attachment(db.Model):
+	id = db.Column(db.Integer, primary_key=True)
+	user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+	entry_id = db.Column(db.Integer, db.ForeignKey('entry.id'))
+	url = db.Column(db.String)
+	
+	def __init__(self, user_id, entry_id, url):
+		self.user_id = user_id
+		self.entry_id = entry_id
+		self.url = url
 
 def allowed_file(filename):
 	return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
@@ -90,9 +99,10 @@ def user_has_voted(user, entry):
 		return True
 	else:
 		return False
-
-def get_score(user):
-	
+		
+def get_task_value(id):
+	score = Task.query.filter(Task.id == id).first().value
+	return score
 
 ###### TEMPLATE FILTERS ########
 
@@ -103,6 +113,21 @@ def get_user_name(id):
 @app.template_filter('get_task_title')
 def get_task_title(id):
 	return Task.query.filter(Task.id == id).first().title
+	
+@app.template_filter('get_score')
+def get_score(id):
+	score = 0
+	entries = Entry.query.filter(Entry.receiver == id)
+	for entry in entries:
+		upvotes = Upvote.query.filter(Upvote.entry == entry.id).count()
+		downvotes = Downvote.query.filter(Downvote.entry == entry.id).count()
+		if upvotes > downvotes:
+			score += get_task_value(entry.task)
+	return score
+	
+@app.template_filter('format_datetime')
+def format_datetime(timestamp):
+	return timestamp.strftime('%Y-%m-%d @ %H:%M')
 
 ################################
 
@@ -127,11 +152,10 @@ def leaderboard():
 def profile(id):
 	name = get_user_name(id)
 	entries = Entry.query.filter(Entry.receiver == id)
-	score = User.query.filter(User.id == id).first().score
-	return render_template('profile.html', entries=entries, score=score, name=name)
+	return render_template('profile.html', entries=entries, name=name)
 
 @app.route('/entry/<id>/upload', methods=['GET', 'POST'])
-def add_proof(id):
+def add_attachment(id):
 	if 'user_id' not in session:
 		abort(401)
 	filename = None
@@ -140,14 +164,15 @@ def add_proof(id):
 		if file and allowed_file(file.filename):
 			filename = str(time.time()) + secure_filename(file.filename)
 			file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-			attachment = Entry.query.filter(Entry.id == id).update({'proof':filename})
+			attachment = Attachment(session['user_id'], id, filename)
+			db.session.add(attachment)
 			db.session.commit()
-			flash('your proof was uploaded')
+			flash('your attachment was uploaded')
 			return redirect(url_for('leaderboard'))
 		else:
 			flash('invalid file')
 			return redirect(url_for('leaderboard'))
-	return render_template('add_proof.html', id=id)
+	return render_template('add_attachment.html', id=id)
 
 @app.route('/entry/<id>/upvote', methods=['GET'])
 def upvote(id):
@@ -179,21 +204,14 @@ def downvote(id):
 			flash('downvoted entry')
 			return redirect(url_for('leaderboard'))
 
-
 @app.route('/entry/add', methods=['GET', 'POST'])
 def add_entry():
 	if 'user_id' not in session:
 		abort(401)
 	users = User.query.all()
 	tasks = Task.query.all()
-	filename = None
 	if request.method == 'POST':
-		if request.files['file']:
-			file = request.files['file']
-			if file and allowed_file(file.filename):
-				filename = str(time.time()) + secure_filename(file.filename)
-				file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-		entry = Entry(session['user_id'], request.form['receiver'], request.form['task'], filename)
+		entry = Entry(session['user_id'], request.form['receiver'], request.form['task'])
 		db.session.add(entry)
 		db.session.commit()
 		flash('entry added...')
