@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block body %}
-<div data-role="collapsible-set">
+<div data-role="collapsible-set" data-url="{{ url_for('leaderboard') }}">
 	<div data-role="collapsible" data-collapsed="false" data-content-theme="c">
 		<h3>Leaderboard</h3>
 		<ol data-role="listview">

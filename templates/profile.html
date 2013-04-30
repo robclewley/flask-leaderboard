@@ -1,5 +1,6 @@
 {% extends "layout.html" %}
 {% block body %}
+<div data-url="{{ url_for('profile', id=id) }}">
   {{ name }} - {{ id|get_score }} pts.
   <div data-role="collapsible-set" data-content-theme="d">
   {% for entry in entries %}
@@ -24,4 +25,5 @@
     </div>
   {% endfor %}
   </div>
+</div>
 {% endblock %}
