@@ -27,7 +27,7 @@
 						{% endif %}
 		  			on {{ entry.pub_date|format_datetime }}
 					{% for attachment in entry.attachments %}
-						<p><img height=100 src="{{ url_for('static', filename=attachment.url) }}"></p>
+						<p><img height=100 src="{{ url_for('static', filename='attachments/'+attachment.url) }}"></p>
 					{% endfor %}
 						<p><a href="{{ url_for('add_attachment', id=entry.id) }}">Add Attachment</a></p>
 						<p><a href="{{ url_for('upvote', id=entry.id) }}">Upvote</a> / <a href="{{ url_for('downvote', id=entry.id) }}">Downvote</a></p>

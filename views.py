@@ -1,146 +1,18 @@
-from __future__ import with_statement
-import time
-import os, re
-from sqlite3 import dbapi2 as sqlite3
-from hashlib import md5
-from datetime import datetime
-from flask import Flask, request, session, url_for, redirect, \
-     render_template, abort, g, flash, _app_ctx_stack
+import os, time
+
+from app import app
 from werkzeug import check_password_hash, generate_password_hash, secure_filename
+from flask import request, session, url_for, redirect, \
+     render_template, abort, g, flash
 
-from flask.ext.sqlalchemy import SQLAlchemy
-
-UPLOAD_FOLDER = 'static'
-ALLOWED_EXTENSIONS = set(['jpg', 'jpeg', 'png', 'gif'])
-
-SECRET_KEY = 'flaskofngar'
-
-app = Flask(__name__)
-app.config.from_object(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gnar'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-db = SQLAlchemy(app)
-
-class User(db.Model):
-	id = db.Column(db.Integer, primary_key=True)
-	name = db.Column(db.String, unique=True)
-	email = db.Column(db.String, unique=True)
-	pw_hash = db.Column(db.String)
-
-	def __init__(self, name, email, pw_hash):
-		self.name = name
-		self.email = email
-		self.pw_hash = pw_hash
-		
-	def __getitem__(self, item):
-		return (self.id, self.name, self.email, self.pw_hash)[item]
-
-class Task(db.Model):
-	id = db.Column(db.Integer, primary_key=True)
-	title = db.Column(db.String)
-	description = db.Column(db.String)
-	value = db.Column(db.Integer)
-	
-	def __init__(self, title, description, value):
-		self.title = title
-		self.description = description
-		self.value = value
-	
-class Entry(db.Model):
-	id = db.Column(db.Integer, primary_key=True)
-	pub_date = db.Column(db.DateTime)
-
-	sender = db.Column(db.Integer, db.ForeignKey('user.id'))
-	receiver = db.Column(db.Integer, db.ForeignKey('user.id'))
-	task = db.Column(db.Integer, db.ForeignKey('task.id'))
-	
-	attachments = db.relationship('Attachment', backref='entry', lazy='dynamic')
-	
-	def __init__(self, sender, receiver, task):
-		self.pub_date = datetime.now()
-		self.sender = sender
-		self.receiver = receiver
-		self.task = task
-
-class Upvote(db.Model):
-	id = db.Column(db.Integer, primary_key=True)
-	user = db.Column(db.Integer, db.ForeignKey('user.id'))
-	entry = db.Column(db.Integer, db.ForeignKey('user.id'))
-	
-	def __init__(self, user, entry):
-		self.user = user
-		self.entry = entry
-	
-class Downvote(db.Model):
-	id = db.Column(db.Integer, primary_key=True)
-	user = db.Column(db.Integer, db.ForeignKey('user.id'))
-	entry = db.Column(db.Integer, db.ForeignKey('user.id'))
-
-	def __init__(self, user, entry):
-		self.user = user
-		self.entry = entry
-		
-class Attachment(db.Model):
-	id = db.Column(db.Integer, primary_key=True)
-	user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-	entry_id = db.Column(db.Integer, db.ForeignKey('entry.id'))
-	url = db.Column(db.String)
-	
-	def __init__(self, user_id, entry_id, url):
-		self.user_id = user_id
-		self.entry_id = entry_id
-		self.url = url
-
-def allowed_file(filename):
-	return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
-	
-def user_has_voted(user, entry):
-	has_upvotes = Upvote.query.filter(Upvote.user == user, Upvote.entry == entry).first()
-	has_downvotes = Downvote.query.filter(Downvote.user == user, Downvote.entry == entry).first()
-	if has_upvotes != None or has_downvotes != None:
-		return True
-	else:
-		return False
-		
-def get_task_value(id):
-	score = Task.query.filter(Task.id == id).first().value
-	return score
-
-###### TEMPLATE FILTERS ########
-
-@app.template_filter('get_user_name')
-def get_user_name(id):
-	return User.query.filter(User.id == id).first().name
-
-@app.template_filter('get_task_title')
-def get_task_title(id):
-	return Task.query.filter(Task.id == id).first().title
-	
-@app.template_filter('get_score')
-def get_score(id):
-	score = 0
-	entries = Entry.query.filter(Entry.receiver == id)
-	for entry in entries:
-		upvotes = Upvote.query.filter(Upvote.entry == entry.id).count()
-		downvotes = Downvote.query.filter(Downvote.entry == entry.id).count()
-		if upvotes > downvotes:
-			score += get_task_value(entry.task)
-	return score
-	
-@app.template_filter('format_datetime')
-def format_datetime(timestamp):
-	return timestamp.strftime('%Y-%m-%d @ %H:%M')
-
-################################
+from models import db, User, Task, Entry, Upvote, Downvote, Attachment
+from filters import *
 
 @app.before_request
 def before_request():
 	g.user = None
 	if 'user_id' in session:
 		g.user = User.query.filter(User.id == session['user_id']).first()
-
-######## VIEW FUNCTIONS ########
 
 @app.route('/')
 def leaderboard():
@@ -276,6 +148,3 @@ def logout():
 	session.pop('user_id', None)
 	flash('You were logged out')
 	return redirect(url_for('leaderboard'))
-	
-if __name__ == '__main__':
-	app.run(debug=True)
