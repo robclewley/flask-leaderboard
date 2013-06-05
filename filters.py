@@ -14,8 +14,8 @@ def get_score(id):
 	score = 0
 	entries = Entry.query.filter(Entry.receiver == id)
 	for entry in entries:
-		upvotes = Upvote.query.filter(Upvote.entry == entry.id).count()
-		downvotes = Downvote.query.filter(Downvote.entry == entry.id).count()
+		upvotes = entry.upvotes.count()
+		downvotes = entry.downvotes.count()
 		if upvotes > downvotes:
 			score += get_task_value(entry.task)
 	return score
@@ -28,8 +28,8 @@ def allowed_file(filename):
 		return '.' in filename and filename.rsplit('.', 1)[1] in app.config['ALLOWED_EXTENSIONS']
 
 def user_has_voted(user, entry):
-	has_upvotes = Upvote.query.filter(Upvote.user == user, Upvote.entry == entry).first()
-	has_downvotes = Downvote.query.filter(Downvote.user == user, Downvote.entry == entry).first()
+	has_upvotes = Upvote.query.filter(Upvote.user_id == user, Upvote.entry_id == entry).first()
+	has_downvotes = Downvote.query.filter(Downvote.user_id == user, Downvote.entry_id == entry).first()
 	if has_upvotes != None or has_downvotes != None:
 		return True
 	else:

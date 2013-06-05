@@ -19,10 +19,10 @@ def leaderboard():
 	if not g.user:
 		return redirect(url_for('login'))
 	entries = Entry.query.all()
-	x = User.query.all()
-	users = sorted(x, key=lambda x: get_score(x.id), reverse=True)
+	users = User.query.all()
+	sorted_users = sorted(users, key=lambda user: get_score(user.id), reverse=True)
 	tasks = Task.query.all()
-	return render_template('leaderboard.html', entries=entries, users=users, tasks=tasks)
+	return render_template('leaderboard.html', entries=entries, users=sorted_users, tasks=tasks)
 
 @app.route('/profile/<id>')
 def profile(id):

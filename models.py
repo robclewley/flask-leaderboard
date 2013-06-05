@@ -42,6 +42,8 @@ class Entry(db.Model):
 	task = db.Column(db.Integer, db.ForeignKey('tasks.id'))
 	
 	attachments = db.relationship('Attachment', backref='entries', lazy='dynamic')
+	upvotes = db.relationship('Upvote', backref='entries', lazy='dynamic')
+	downvotes = db.relationship('Downvote', backref='entires', lazy='dynamic')
 	
 	def __init__(self, sender, receiver, task):
 		self.pub_date = datetime.now()
@@ -52,22 +54,22 @@ class Entry(db.Model):
 class Upvote(db.Model):
 	__tablename__ = 'upvotes'
 	id = db.Column(db.Integer, primary_key=True)
-	user = db.Column(db.Integer, db.ForeignKey('users.id'))
-	entry = db.Column(db.Integer, db.ForeignKey('users.id'))
+	user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+	entry_id = db.Column(db.Integer, db.ForeignKey('entries.id'))
 	
-	def __init__(self, user, entry):
-		self.user = user
-		self.entry = entry
+	def __init__(self, user_id, entry_id):
+		self.user_id = user_id
+		self.entry_id = entry_id
 	
 class Downvote(db.Model):
 	__tablename__ = 'downvotes'
 	id = db.Column(db.Integer, primary_key=True)
-	user = db.Column(db.Integer, db.ForeignKey('users.id'))
-	entry = db.Column(db.Integer, db.ForeignKey('users.id'))
+	user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+	entry_id = db.Column(db.Integer, db.ForeignKey('entries.id'))
 
 	def __init__(self, user, entry):
-		self.user = user
-		self.entry = entry
+		self.user_id = user_id
+		self.entry_id = entry_id
 		
 class Attachment(db.Model):
 	__tablename__ = 'attachments'
