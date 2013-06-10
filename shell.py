@@ -3,6 +3,6 @@ import readline
 from pprint import pprint
 
 from flask import *
-from app import *
+from leaderboard import *
 
 os.environ['PYTHONINSPECT'] = 'True'

@@ -1,4 +1,4 @@
-from app import app
-from models import *
-from views import *
-app.run(debug=True)
+from leaderboard import app
+
+if __name__ == '__main__':
+	app.run()
