@@ -4,6 +4,6 @@ from leaderboard import app
 
 @app.route('/logout')
 def logout():
-    session.pop('user_id', None)
-    flash('You were logged out')
-    return render_template('login.html')
+	session.pop('user_id', None)
+	flash('You were logged out')
+	return render_template('login.html')
