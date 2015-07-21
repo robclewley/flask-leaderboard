@@ -1,0 +1,1 @@
+This is an application I created using Flask (Python) that keeps track of images, which can be upvoted or downvoted and ranks the top users accordingly. I forgot why I created this... I think it was for a drinking game in college.
